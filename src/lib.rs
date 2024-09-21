@@ -1,3 +1,4 @@
+#![feature(maybe_uninit_fill, maybe_uninit_slice)]
 // Copyright 2017 rust-hyper-multipart-rfc7578 Developers
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
@@ -53,6 +54,8 @@
 extern crate bytes;
 extern crate futures;
 extern crate http;
+extern crate http_body;
+extern crate http_body_util;
 extern crate hyper;
 extern crate mime;
 extern crate rand;

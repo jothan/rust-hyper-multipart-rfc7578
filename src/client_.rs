@@ -6,16 +6,24 @@
 // copied, modified, or distributed except according to those terms.
 //
 
+use std::{
+    mem::MaybeUninit,
+    pin::Pin,
+    task::{Context, Poll},
+};
+
 use bytes::{BufMut, Bytes, BytesMut};
-use futures::{stream::Stream, Async, Poll};
+use futures::stream::Stream;
 use http::{
     self,
     header::CONTENT_TYPE,
     request::{Builder, Request},
 };
+use http_body::Frame;
+use http_body_util::{BodyStream, StreamBody};
 use hyper;
 use mime::{self, Mime};
-use rand::{distributions::Alphanumeric, rngs::SmallRng, FromEntropy, Rng};
+use rand::{distributions::Alphanumeric, Rng};
 use std::borrow::Borrow;
 use std::{
     fmt::Display,
@@ -102,13 +110,11 @@ impl Body {
 }
 
 impl Stream for Body {
-    type Item = Bytes;
-
-    type Error = Error;
+    type Item = Result<Frame<Bytes>, Error>;
 
     /// Iterate over each form part, and write it out.
     ///
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Option<Self::Item>> {
         let bytes = BytesMut::with_capacity(self.buf_size);
         let mut writer = bytes.writer();
 
@@ -129,16 +135,18 @@ impl Stream for Body {
                 // No current part, and no parts left means there is nothing
                 // left to write.
                 //
-                return Ok(Async::Ready(None));
+                return Poll::Ready(None);
             }
         }
 
         let num = if let Some(ref mut read) = self.current {
-            let mut buf = writer.get_mut();
+            let buf = writer.get_mut();
             unsafe {
-                let num = read
-                    .read(&mut buf.bytes_mut())
-                    .map_err(Error::ContentRead)?;
+                let chunk = buf.chunk_mut().as_uninit_slice_mut();
+                MaybeUninit::fill(chunk, 0);
+                let chunk = MaybeUninit::slice_assume_init_mut(chunk);
+
+                let num = read.read(chunk).map_err(Error::ContentRead)?;
 
                 buf.advance_mut(num);
 
@@ -161,13 +169,17 @@ impl Stream for Body {
                 self.write_final_boundary(&mut writer)
                     .map_err(Error::BoundaryWrite)?;
 
-                Ok(Async::Ready(Some(writer.into_inner().freeze())))
+                Poll::Ready(Some(Ok(Frame::data(writer.into_inner().freeze()))))
             } else {
-                self.poll()
+                self.poll_next(ctx)
             }
         } else {
-            Ok(Async::Ready(Some(writer.into_inner().freeze())))
+            Poll::Ready(Some(Ok(Frame::data(writer.into_inner().freeze()))))
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, None)
     }
 }
 
@@ -248,14 +260,13 @@ impl Form {
     /// # }
     /// ```
     ///
-    pub fn set_body(self, req: &mut Builder) -> Result<Request<hyper::Body>, http::Error> {
+    pub fn set_body(self, req: Builder) -> Result<Request<StreamBody<Body>>, http::Error> {
         let header = format!("multipart/form-data; boundary=\"{}\"", &self.boundary);
 
         let header: &str = header.as_ref();
 
-        req.header(CONTENT_TYPE, header);
-
-        req.body(hyper::Body::wrap_stream(Body::from(self)))
+        req.header(CONTENT_TYPE, header)
+            .body(StreamBody::new(Body::from(self)))
     }
 
     /// Adds a text part to the Form.
@@ -625,9 +636,9 @@ impl BoundaryGenerator for RandomAsciiGenerator {
     /// Creates a boundary of 6 ascii characters.
     ///
     fn generate_boundary() -> String {
-        let mut rng = SmallRng::from_entropy();
+        let rng = rand::thread_rng();
         let ascii = rng.sample_iter(&Alphanumeric);
 
-        String::from_iter(ascii.take(6))
+        String::from_iter(ascii.take(6).map(char::from))
     }
 }
