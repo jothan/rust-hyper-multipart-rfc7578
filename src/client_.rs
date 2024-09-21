@@ -9,15 +9,22 @@
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::{stream::Stream, Async, Poll};
 use http::{
-    self, header::CONTENT_TYPE, request::{Builder, Request},
+    self,
+    header::CONTENT_TYPE,
+    request::{Builder, Request},
 };
 use hyper;
 use mime::{self, Mime};
 use rand::{distributions::Alphanumeric, rngs::SmallRng, FromEntropy, Rng};
 use std::borrow::Borrow;
 use std::{
-    fmt::Display, fs::File, io::{self, Cursor, Read, Write}, iter::{FromIterator, Peekable},
-    path::Path, str::FromStr, vec::IntoIter,
+    fmt::Display,
+    fs::File,
+    io::{self, Cursor, Read, Write},
+    iter::{FromIterator, Peekable},
+    path::Path,
+    str::FromStr,
+    vec::IntoIter,
 };
 
 use error::Error;
@@ -87,7 +94,8 @@ impl Body {
         write_crlf(write)?;
         write.write_all(&format!("Content-Type: {}", part.content_type).as_bytes())?;
         write_crlf(write)?;
-        write.write_all(&format!("Content-Disposition: {}", part.content_disposition).as_bytes())?;
+        write
+            .write_all(&format!("Content-Disposition: {}", part.content_disposition).as_bytes())?;
         write_crlf(write)?;
         write_crlf(write)
     }
@@ -128,7 +136,9 @@ impl Stream for Body {
         let num = if let Some(ref mut read) = self.current {
             let mut buf = writer.get_mut();
             unsafe {
-                let num = read.read(&mut buf.bytes_mut()).map_err(Error::ContentRead)?;
+                let num = read
+                    .read(&mut buf.bytes_mut())
+                    .map_err(Error::ContentRead)?;
 
                 buf.advance_mut(num);
 
