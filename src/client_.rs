@@ -42,7 +42,7 @@ fn write_crlf<W>(write: &mut W) -> io::Result<()>
 where
     W: Write,
 {
-    write.write_all(&[b'\r', b'\n'])
+    write.write_all(b"\r\n")
 }
 
 /// Multipart body that is compatible with Hyper.
@@ -76,7 +76,7 @@ impl Body {
         W: Write,
     {
         write_crlf(write)?;
-        write.write_all(&[b'-', b'-'])?;
+        write.write_all(b"--")?;
         write.write_all(self.boundary.as_bytes())
     }
 
@@ -89,7 +89,7 @@ impl Body {
         W: Write,
     {
         self.write_boundary(write)?;
-        write.write_all(&[b'-', b'-'])
+        write.write_all(b"--")
     }
 
     /// Writes the Content-Disposition, and Content-Type headers.
@@ -99,10 +99,9 @@ impl Body {
         W: Write,
     {
         write_crlf(write)?;
-        write.write_all(&format!("Content-Type: {}", part.content_type).as_bytes())?;
+        write.write_all(format!("Content-Type: {}", part.content_type).as_bytes())?;
         write_crlf(write)?;
-        write
-            .write_all(&format!("Content-Disposition: {}", part.content_disposition).as_bytes())?;
+        write.write_all(format!("Content-Disposition: {}", part.content_disposition).as_bytes())?;
         write_crlf(write)?;
         write_crlf(write)
     }
@@ -113,6 +112,7 @@ impl Stream for Body {
 
     /// Iterate over each form part, and write it out.
     ///
+    #[allow(clippy::only_used_in_recursion)]
     fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Option<Self::Item>> {
         let bytes = BytesMut::with_capacity(self.buf_size);
         let mut writer = bytes.writer();
@@ -125,7 +125,7 @@ impl Stream for Body {
                     .map_err(Error::HeaderWrite)?;
 
                 let read = match part.inner {
-                    Inner::Read(read, _) => read,
+                    Inner::Read(read) => read,
                     Inner::Text(s) => Box::new(Cursor::new(s.into_bytes())),
                 };
 
@@ -315,12 +315,8 @@ impl Form {
     {
         let read = Box::new(read);
 
-        self.parts.push(Part::new::<_, String>(
-            Inner::Read(read, None),
-            name,
-            None,
-            None,
-        ));
+        self.parts
+            .push(Part::new::<_, String>(Inner::Read(read), name, None, None));
     }
 
     /// Adds a file, and attempts to derive the mime type.
@@ -367,7 +363,7 @@ impl Form {
         let read = Box::new(read);
 
         self.parts.push(Part::new::<_, String>(
-            Inner::Read(read, None),
+            Inner::Read(read),
             name,
             None,
             Some(filename.into()),
@@ -403,7 +399,7 @@ impl Form {
         let read = Box::new(read);
 
         self.parts.push(Part::new::<_, String>(
-            Inner::Read(read, None),
+            Inner::Read(read),
             name,
             Some(mime),
             Some(filename.into()),
@@ -452,11 +448,11 @@ impl Form {
         } else {
             mime
         };
-        let len = match f.metadata() {
+        match f.metadata() {
             // If the path is not a file, it can't be uploaded because there
             // is no content.
             //
-            Ok(ref meta) if !meta.is_file() => Err(io::Error::new(
+            Ok(meta) if !meta.is_file() => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "expected a file not directory",
             )),
@@ -464,7 +460,7 @@ impl Form {
             // If there is some metadata on the file, try to derive some
             // header values.
             //
-            Ok(ref meta) => Ok(Some(meta.len())),
+            Ok(_) => Ok(()),
 
             // The file metadata could not be accessed. This MIGHT not be an
             // error, if the file could be opened.
@@ -475,7 +471,7 @@ impl Form {
         let read = Box::new(f);
 
         self.parts.push(Part::new(
-            Inner::Read(read, len),
+            Inner::Read(read),
             name,
             mime,
             Some(path.as_ref().as_os_str().to_string_lossy()),
@@ -553,8 +549,8 @@ impl Part {
         let content_type = format!("{}", mime.unwrap_or_else(|| inner.default_content_type()));
 
         Part {
-            inner: inner,
-            content_type: content_type,
+            inner,
+            content_type,
             content_disposition: format!("form-data; {}", disposition_params.join("; ")),
         }
     }
@@ -572,7 +568,7 @@ enum Inner {
     ///     and assigned the corresponding content type if not explicitly
     ///     specified.
     ///
-    Read(Box<dyn Read + Send + 'static>, Option<u64>),
+    Read(Box<dyn Read + Send + 'static>),
 
     /// The `String` variant handles "text/plain" form data payloads.
     ///
@@ -587,18 +583,8 @@ impl Inner {
     #[inline]
     fn default_content_type(&self) -> Mime {
         match *self {
-            Inner::Read(_, _) => mime::APPLICATION_OCTET_STREAM,
+            Inner::Read(_) => mime::APPLICATION_OCTET_STREAM,
             Inner::Text(_) => mime::TEXT_PLAIN,
-        }
-    }
-
-    /// Returns the length of the inner type.
-    ///
-    #[inline]
-    fn len(&self) -> Option<u64> {
-        match *self {
-            Inner::Read(_, len) => len,
-            Inner::Text(ref s) => Some(s.len() as u64),
         }
     }
 }

@@ -39,7 +39,7 @@ type BoxFut = Box<
 fn index(req: Request<Incoming>) -> BoxFut {
     let body = req.into_body().map_frame(|frame| {
         if let Some(data) = frame.data_ref() {
-            println!("{}", String::from_utf8_lossy(&data));
+            println!("{}", String::from_utf8_lossy(data));
         }
 
         frame
