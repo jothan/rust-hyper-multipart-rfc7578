@@ -130,17 +130,18 @@ impl Stream for Body {
 
         let num = if let Some(ref mut read) = self.current {
             let buf = writer.get_mut();
-            unsafe {
-                let chunk = buf.chunk_mut().as_uninit_slice_mut();
-                MaybeUninit::fill(chunk, 0);
-                let chunk = MaybeUninit::slice_assume_init_mut(chunk);
+            let chunk = buf.chunk_mut();
+            unsafe { chunk.as_uninit_slice_mut() }.fill(MaybeUninit::zeroed());
 
-                let num = read.read(chunk).map_err(Error::ContentRead)?;
+            let num = {
+                let data =
+                    unsafe { std::slice::from_raw_parts_mut(chunk.as_mut_ptr(), chunk.len()) };
+                read.read(data).map_err(Error::ContentRead)?
+            };
 
-                buf.advance_mut(num);
+            unsafe { buf.advance_mut(num) };
 
-                num
-            }
+            num
         } else {
             0
         };

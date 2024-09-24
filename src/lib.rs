@@ -1,4 +1,3 @@
-#![feature(maybe_uninit_fill, maybe_uninit_slice)]
 // Copyright 2017 rust-hyper-multipart-rfc7578 Developers
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
