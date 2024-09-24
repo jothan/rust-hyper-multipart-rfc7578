@@ -61,7 +61,6 @@
 //! let _ = rt.block_on(client.request(req));
 //! # }
 //! ```
-//!
 extern crate bytes;
 extern crate futures;
 extern crate http;
@@ -79,7 +78,6 @@ pub mod client {
 
     /// This module contains data structures for building a multipart/form
     /// body to send a server.
-    ///
     pub mod multipart {
         pub use client_::{Body, BoundaryGenerator, Form, Part};
     }

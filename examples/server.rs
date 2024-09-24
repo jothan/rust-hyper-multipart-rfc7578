@@ -52,7 +52,6 @@ fn index(req: Request<Incoming>) -> BoxFut {
 
 /// This example runs a server that prints requests as it receives them.
 /// It is useful for debugging.
-///
 fn main() -> Result<(), Box<dyn Error>> {
     let addr = "127.0.0.1:9001";
     let sockets = TcpListener::bind(addr).map_ok(TcpListenerStream::new);

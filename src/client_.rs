@@ -37,7 +37,6 @@ use std::{
 use error::Error;
 
 /// Writes a CLRF.
-///
 fn write_crlf<W>(write: &mut W) -> io::Result<()>
 where
     W: Write,
@@ -46,23 +45,18 @@ where
 }
 
 /// Multipart body that is compatible with Hyper.
-///
 pub struct Body {
     /// The amount of data to write with each chunk.
-    ///
     buf_size: usize,
 
     /// The active reader.
-    ///
     current: Option<Box<dyn Read + Send + 'static>>,
 
     /// The parts as an iterator. When the iterator stops
     /// yielding, the body is fully written.
-    ///
     parts: Peekable<IntoIter<Part>>,
 
     /// The multipart boundary.
-    ///
     boundary: String,
 }
 
@@ -70,7 +64,6 @@ impl Body {
     /// Implements section 4.1.
     ///
     /// [See](https://tools.ietf.org/html/rfc7578#section-4.1).
-    ///
     fn write_boundary<W>(&self, write: &mut W) -> io::Result<()>
     where
         W: Write,
@@ -83,7 +76,6 @@ impl Body {
     /// Writes the last form boundary.
     ///
     /// [See](https://tools.ietf.org/html/rfc2046#section-5.1).
-    ///
     fn write_final_boundary<W>(&self, write: &mut W) -> io::Result<()>
     where
         W: Write,
@@ -93,7 +85,6 @@ impl Body {
     }
 
     /// Writes the Content-Disposition, and Content-Type headers.
-    ///
     fn write_headers<W>(&self, write: &mut W, part: &Part) -> io::Result<()>
     where
         W: Write,
@@ -111,7 +102,6 @@ impl Stream for Body {
     type Item = Result<Frame<Bytes>, Error>;
 
     /// Iterate over each form part, and write it out.
-    ///
     #[allow(clippy::only_used_in_recursion)]
     fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Option<Self::Item>> {
         let bytes = BytesMut::with_capacity(self.buf_size);
@@ -186,20 +176,17 @@ impl Stream for Body {
 /// RFC 7578.
 ///
 /// [See](https://tools.ietf.org/html/rfc7578#section-1).
-///
 pub struct Form {
     parts: Vec<Part>,
 
     /// The auto-generated boundary as described by 4.1.
     ///
     /// [See](https://tools.ietf.org/html/rfc7578#section-4.1).
-    ///
     boundary: String,
 }
 
 impl Default for Form {
     /// Creates a new form with the default boundary generator.
-    ///
     #[inline]
     fn default() -> Form {
         Form::new::<RandomAsciiGenerator>()
@@ -225,7 +212,6 @@ impl Form {
     ///
     /// let form = multipart::Form::new::<TestGenerator>();
     /// ```
-    ///
     #[inline]
     pub fn new<G>() -> Form
     where
@@ -258,7 +244,6 @@ impl Form {
     /// let req = form.set_body(req_builder).unwrap();
     /// # }
     /// ```
-    ///
     pub fn set_body(self, req: Builder) -> Result<Request<StreamBody<Body>>, http::Error> {
         let header = format!("multipart/form-data; boundary=\"{}\"", &self.boundary);
 
@@ -280,7 +265,6 @@ impl Form {
     /// form.add_text("text", "Hello World!");
     /// form.add_text("more", String::from("Hello Universe!"));
     /// ```
-    ///
     pub fn add_text<N, T>(&mut self, name: N, text: T)
     where
         N: Display,
@@ -307,7 +291,6 @@ impl Form {
     ///
     /// form.add_reader("input", bytes);
     /// ```
-    ///
     pub fn add_reader<F, R>(&mut self, name: F, read: R)
     where
         F: Display,
@@ -330,7 +313,6 @@ impl Form {
     ///
     /// form.add_file("file", file!()).expect("file to exist");
     /// ```
-    ///
     #[inline]
     pub fn add_file<P, F>(&mut self, name: F, path: P) -> io::Result<()>
     where
@@ -353,7 +335,6 @@ impl Form {
     ///
     /// form.add_reader_file("input", bytes, "filename.txt");
     /// ```
-    ///
     pub fn add_reader_file<F, G, R>(&mut self, name: F, read: R, filename: G)
     where
         F: Display,
@@ -389,7 +370,6 @@ impl Form {
     /// form.add_reader_file_with_mime("input", bytes, "filename.txt", mime::TEXT_PLAIN);
     /// # }
     /// ```
-    ///
     pub fn add_reader_file_with_mime<F, G, R>(&mut self, name: F, read: R, filename: G, mime: Mime)
     where
         F: Display,
@@ -425,7 +405,6 @@ impl Form {
     /// form.add_file_with_mime("data", "test.csv", mime::TEXT_CSV);
     /// # }
     /// ```
-    ///
     #[inline]
     pub fn add_file_with_mime<P, F>(&mut self, name: F, path: P, mime: Mime) -> io::Result<()>
     where
@@ -436,7 +415,6 @@ impl Form {
     }
 
     /// Internal method for adding a file part to the form.
-    ///
     fn _add_file<P, F>(&mut self, name: F, path: P, mime: Option<Mime>) -> io::Result<()>
     where
         P: AsRef<Path>,
@@ -483,7 +461,6 @@ impl Form {
 
 impl From<Form> for Body {
     /// Turns a `Form` into a multipart `Body`.
-    ///
     #[inline]
     fn from(form: Form) -> Self {
         Body {
@@ -498,7 +475,6 @@ impl From<Form> for Body {
 /// One part of a body delimited by a boundary line.
 ///
 /// [See RFC2046 5.1](https://tools.ietf.org/html/rfc2046#section-5.1).
-///
 pub struct Part {
     inner: Inner,
 
@@ -507,13 +483,11 @@ pub struct Part {
     /// "application/octet-stream" for file data.
     ///
     /// [See](https://tools.ietf.org/html/rfc7578#section-4.4)
-    ///
     content_type: String,
 
     /// Each part must contain a Content-Disposition header field.
     ///
     /// [See](https://tools.ietf.org/html/rfc7578#section-4.2).
-    ///
     content_disposition: String,
 }
 
@@ -525,7 +499,6 @@ impl Part {
     /// Per [4.3](https://tools.ietf.org/html/rfc7578#section-4.3), if multiple
     /// files need to be specified for one form field, they can all be specified
     /// with the same name parameter.
-    ///
     fn new<N, F>(inner: Inner, name: N, mime: Option<Mime>, filename: Option<F>) -> Part
     where
         N: Display,
@@ -567,11 +540,9 @@ enum Inner {
     ///     Any arbitrary input stream is automatically considered a file,
     ///     and assigned the corresponding content type if not explicitly
     ///     specified.
-    ///
     Read(Box<dyn Read + Send + 'static>),
 
     /// The `String` variant handles "text/plain" form data payloads.
-    ///
     Text(String),
 }
 
@@ -579,7 +550,6 @@ impl Inner {
     /// Returns the default Content-Type header value as described in section 4.4.
     ///
     /// [See](https://tools.ietf.org/html/rfc7578#section-4.4)
-    ///
     #[inline]
     fn default_content_type(&self) -> Mime {
         match *self {
@@ -611,7 +581,6 @@ impl Inner {
 /// ```
 pub trait BoundaryGenerator {
     /// Generates a String to use as a boundary.
-    ///
     fn generate_boundary() -> String;
 }
 
@@ -619,7 +588,6 @@ struct RandomAsciiGenerator;
 
 impl BoundaryGenerator for RandomAsciiGenerator {
     /// Creates a boundary of 6 ascii characters.
-    ///
     fn generate_boundary() -> String {
         let rng = rand::thread_rng();
         let ascii = rng.sample_iter(&Alphanumeric);
