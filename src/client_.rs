@@ -229,9 +229,6 @@ impl Form {
     /// # Examples
     ///
     /// ```
-    /// # extern crate hyper;
-    /// # extern crate hyper_multipart_rfc7578;
-    /// #
     /// use hyper::{Method, Request, Uri};
     /// use hyper_multipart_rfc7578::client::multipart;
     ///
@@ -356,10 +353,6 @@ impl Form {
     /// # Examples
     ///
     /// ```
-    /// # extern crate hyper;
-    /// # extern crate mime;
-    /// # extern crate hyper_multipart_rfc7578;
-    /// #
     /// use hyper_multipart_rfc7578::client::multipart;
     /// use std::io::Cursor;
     ///
@@ -393,10 +386,6 @@ impl Form {
     /// # Examples
     ///
     /// ```
-    /// # extern crate hyper;
-    /// # extern crate mime;
-    /// # extern crate hyper_multipart_rfc7578;
-    /// #
     /// use hyper_multipart_rfc7578::client::multipart;
     ///
     /// # fn main() {

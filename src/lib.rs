@@ -23,26 +23,21 @@
 //! Because the name of this library is really wordy, I recommend shortening it:
 //!
 //! ```rust
-//! extern crate hyper_multipart_rfc7578 as hyper_multipart;
+//! use hyper_multipart_rfc7578 as hyper_multipart;
 //! ```
 //!
 //! Using this requires a hyper client compatible with the `multipart::Body`
 //! data structure (see the documentation for more detailed examples):
 //!
 //! ```rust
-//! # extern crate futures;
-//! # extern crate hyper;
-//! # extern crate hyper_multipart_rfc7578;
-//! # extern crate hyper_util;
-//! # extern crate tokio;
-//!
 //! use futures::{Future, FutureExt, TryFutureExt};
 //! use hyper::{Method, Request, Uri};
 //! use hyper_multipart_rfc7578::client::{self, multipart};
 //! use hyper_util::client::legacy::Client;
 //! use hyper_util::rt::TokioIo;
 //!
-//! # fn main() {
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let uri = Uri::from_static("http://localhost/upload");
 //! let connector = tower::service_fn(|req: Uri| {
 //!     let host = req.host().unwrap().to_owned();
@@ -55,21 +50,12 @@
 //! let mut form = multipart::Form::default();
 //!
 //! form.add_text("test", "Hello World");
-//! let req = form.set_body(req_builder).unwrap();
+//! let req = form.set_body(req_builder)?;
 //!
-//! let rt = tokio::runtime::Runtime::new().unwrap();
-//! let _ = rt.block_on(client.request(req));
+//! let _ = client.request(req).await;
+//! # Ok(())
 //! # }
 //! ```
-extern crate bytes;
-extern crate futures;
-extern crate http;
-extern crate http_body;
-extern crate http_body_util;
-extern crate hyper;
-extern crate mime;
-extern crate rand;
-
 mod client_;
 mod error;
 

@@ -6,42 +6,19 @@
 // copied, modified, or distributed except according to those terms.
 //
 
-extern crate futures;
-extern crate http_body_util;
-extern crate hyper;
-extern crate hyper_multipart_rfc7578 as hyper_multipart;
-extern crate hyper_util;
-extern crate tokio;
-extern crate tower;
-
 use std::error::Error;
 
-use futures::{FutureExt, TryFutureExt, TryStreamExt};
+use futures::{FutureExt, TryStreamExt};
 use http_body_util::BodyExt;
 use hyper::http::Uri;
 use hyper::Request;
-use crate::hyper_multipart::client::multipart;
+use hyper_multipart_rfc7578::client::multipart;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 
-#[derive(Debug)]
-enum HttpError {
-    #[allow(dead_code)]
-    Hyper(hyper::Error),
-    #[allow(dead_code)]
-    Client(hyper_util::client::legacy::Error),
-}
-
-impl std::error::Error for HttpError {}
-
-impl std::fmt::Display for HttpError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     let uri = hyper::Uri::from_static("http://127.0.0.1:9001");
 
     let connector = tower::service_fn(|req: Uri| {
@@ -65,19 +42,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let req_builder = Request::post(uri);
 
     let req = form.set_body(req_builder).unwrap();
-    let rt = tokio::runtime::Runtime::new().unwrap();
 
-    let res = client
-        .request(req)
-        .map_err(HttpError::Client)
-        .and_then(|res| {
-            // Read the whole response body.
-            res.into_data_stream()
-                .map_err(HttpError::Hyper)
-                .try_for_each(|_frame| futures::future::ready(Ok(())))
-        });
+    let mut res = client.request(req).await?.into_data_stream();
 
-    rt.block_on(res)?;
+    // Read the whole response body.
+    while let Some(_frame) = res.try_next().await? {}
 
     Ok(())
 }
