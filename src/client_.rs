@@ -20,8 +20,7 @@ use http::{
     request::{Builder, Request},
 };
 use http_body::Frame;
-use http_body_util::{BodyStream, StreamBody};
-use hyper;
+use http_body_util::StreamBody;
 use mime::{self, Mime};
 use rand::{distributions::Alphanumeric, Rng};
 use std::borrow::Borrow;
@@ -55,7 +54,7 @@ pub struct Body {
 
     /// The active reader.
     ///
-    current: Option<Box<'static + Read + Send>>,
+    current: Option<Box<dyn Read + Send + 'static>>,
 
     /// The parts as an iterator. When the iterator stops
     /// yielding, the body is fully written.
@@ -573,7 +572,7 @@ enum Inner {
     ///     and assigned the corresponding content type if not explicitly
     ///     specified.
     ///
-    Read(Box<'static + Read + Send>, Option<u64>),
+    Read(Box<dyn Read + Send + 'static>, Option<u64>),
 
     /// The `String` variant handles "text/plain" form data payloads.
     ///
