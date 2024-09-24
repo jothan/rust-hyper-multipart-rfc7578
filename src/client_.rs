@@ -255,7 +255,7 @@ impl Form {
     /// let mut form = multipart::Form::default();
     ///
     /// form.add_text("text", "Hello World!");
-    /// let req = form.set_body(&mut req_builder).unwrap();
+    /// let req = form.set_body(req_builder).unwrap();
     /// # }
     /// ```
     ///

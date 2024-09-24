@@ -12,12 +12,11 @@ extern crate hyper;
 extern crate hyper_multipart_rfc7578 as hyper_multipart;
 extern crate hyper_util;
 extern crate tokio;
+extern crate tower;
 
 use std::error::Error;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
-use futures::{Future, FutureExt, TryFutureExt, TryStreamExt};
+use futures::{FutureExt, TryFutureExt, TryStreamExt};
 use http_body_util::BodyExt;
 use hyper::http::Uri;
 use hyper::Request;
@@ -45,7 +44,13 @@ impl std::fmt::Display for HttpError {
 fn main() -> Result<(), Box<dyn Error>> {
     let uri = hyper::Uri::from_static("http://127.0.0.1:9001");
 
-    let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build(TokioConnector);
+    let connector = tower::service_fn(|req: Uri| {
+        let host = req.host().unwrap().to_owned();
+        let port = req.port_u16().unwrap_or(80);
+        Box::pin(TcpStream::connect((host, port)).map(|r| r.map(TokioIo::new)))
+    });
+
+    let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build(connector);
 
     println!("note: this must be run in the root of the project repository");
     println!("note: run this with the example server running");
@@ -75,24 +80,4 @@ fn main() -> Result<(), Box<dyn Error>> {
     rt.block_on(res)?;
 
     Ok(())
-}
-
-#[derive(Clone)]
-struct TokioConnector;
-
-impl tower::Service<Uri> for TokioConnector {
-    type Response = TokioIo<TcpStream>;
-    type Error = std::io::Error;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Uri) -> Self::Future {
-        let host = req.host().unwrap().to_owned();
-        let port = req.port_u16().unwrap_or(80);
-        Box::pin(TcpStream::connect((host, port)).map(|r| r.map(TokioIo::new)))
-    }
 }

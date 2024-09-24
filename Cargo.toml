@@ -32,4 +32,4 @@ hyper-tls         = "0.6"
 hyper-util = { version = "0.1", features = ["client", "client-legacy", "http1", "tokio"] }
 tokio = { version = "1", features = ["macros", "net", "rt", "rt-multi-thread"] }
 tokio-stream = { version = "0.1", features = ["net"] }
-tower = "0.5"
+tower = { version = "0.5", features = ["util"] }
