@@ -9,6 +9,7 @@ categories        = ["asynchronous", "web-programming"]
 version           = "0.2.0-alpha1"
 readme            = "README.md"
 license           = "MIT OR Apache-2.0"
+edition           = "2018"
 
 [badges]
 travis-ci         = { repository = "ferristseng/rust-hyper-multipart-rfc7578" }

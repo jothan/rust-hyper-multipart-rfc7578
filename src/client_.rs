@@ -34,7 +34,7 @@ use std::{
     vec::IntoIter,
 };
 
-use error::Error;
+use crate::error::Error;
 
 /// Writes a CLRF.
 fn write_crlf<W>(write: &mut W) -> io::Result<()>

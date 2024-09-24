@@ -20,7 +20,7 @@ use futures::{FutureExt, TryFutureExt, TryStreamExt};
 use http_body_util::BodyExt;
 use hyper::http::Uri;
 use hyper::Request;
-use hyper_multipart::client::multipart;
+use crate::hyper_multipart::client::multipart;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
